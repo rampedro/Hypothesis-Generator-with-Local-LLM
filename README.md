@@ -1,6 +1,6 @@
-# RoBERTa + RDF Attention Visualization
+# RoBERTa + Triplet Visualization
 
-An enhanced D3.js visualization tool that combines RDF knowledge graphs with RoBERTa transformer attention weights to provide multi-layered semantic analysis and visual exploration of text.
+An enhanced D3.js visualization tool that combines RDF knowledge graphs with RoBERTa transformer attention weights to provide a logical and semantic visual exploration of text.
 
 ## Features
 
