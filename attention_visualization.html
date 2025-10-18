@@ -1,0 +1,616 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>RoBERTa + RDF Attention Visualization</title>
+	<meta name="author" content="Enhanced with RoBERTa Attention Analysis">
+	
+	<style type="text/css">
+		body {
+			font-family: Arial, sans-serif;
+			margin: 20px;
+			background: #f8f9fa;
+		}
+
+		.container {
+			max-width: 1400px;
+			margin: 0 auto;
+		}
+
+		.control-panel {
+			background: white;
+			padding: 20px;
+			border-radius: 8px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			margin-bottom: 20px;
+		}
+
+		.visualization-container {
+			background: white;
+			border-radius: 8px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			padding: 20px;
+		}
+
+		/* Node styles */
+		.node-rdf {
+			stroke: #fff;
+			fill: #3498db;
+			stroke-width: 2px;
+		}
+
+		.node-token {
+			stroke: #fff;
+			fill: #e74c3c;
+			stroke-width: 2px;
+		}
+
+		.node-combined {
+			stroke: #fff;
+			fill: #9b59b6;
+			stroke-width: 2px;
+		}
+
+		/* Link styles */
+		.link-rdf {
+			stroke: #3498db;
+			stroke-opacity: 0.8;
+			stroke-width: 2px;
+		}
+
+		.link-attention {
+			stroke: #e74c3c;
+			stroke-opacity: 0.6;
+			stroke-width: 1px;
+		}
+
+		.link-combined {
+			stroke: #9b59b6;
+			stroke-opacity: 0.7;
+			stroke-width: 1.5px;
+		}
+
+		/* Marker styles */
+		marker {
+			stroke: #999;
+			fill: rgba(124,240,10,0);
+		}
+
+		.node-text {
+			font: 11px sans-serif;
+			fill: black;
+			pointer-events: none;
+		}
+
+		.link-text {
+			font: 9px sans-serif;
+			fill: #666;
+			pointer-events: none;
+		}
+
+		svg {
+			border: 1px solid #ddd;
+			border-radius: 4px;
+		}
+
+		/* Control styles */
+		.input-group {
+			margin-bottom: 15px;
+		}
+
+		.input-group label {
+			display: block;
+			margin-bottom: 5px;
+			font-weight: bold;
+		}
+
+		.input-group textarea, .input-group input, .input-group select {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-family: inherit;
+		}
+
+		.input-group textarea {
+			resize: vertical;
+			min-height: 80px;
+		}
+
+		.button-group {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+
+		.btn {
+			background: #3498db;
+			color: white;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 14px;
+		}
+
+		.btn:hover {
+			background: #2980b9;
+		}
+
+		.btn-secondary {
+			background: #95a5a6;
+		}
+
+		.btn-secondary:hover {
+			background: #7f8c8d;
+		}
+
+		.layer-controls {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			margin-top: 15px;
+		}
+
+		.layer-info {
+			background: #ecf0f1;
+			padding: 10px;
+			border-radius: 4px;
+			margin-top: 10px;
+		}
+
+		.loading {
+			display: none;
+			text-align: center;
+			padding: 20px;
+			color: #7f8c8d;
+		}
+
+		.error {
+			background: #e74c3c;
+			color: white;
+			padding: 10px;
+			border-radius: 4px;
+			margin-top: 10px;
+		}
+
+		.stats {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: 15px;
+			margin-top: 15px;
+		}
+
+		.stat-card {
+			background: #ecf0f1;
+			padding: 15px;
+			border-radius: 4px;
+			text-align: center;
+		}
+
+		.stat-value {
+			font-size: 24px;
+			font-weight: bold;
+			color: #2c3e50;
+		}
+
+		.stat-label {
+			font-size: 12px;
+			color: #7f8c8d;
+			margin-top: 5px;
+		}
+	</style>
+	
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script src="https://d3js.org/d3.v3.min.js"></script>
+</head>
+<body>
+	<div class="container">
+		<h1>RoBERTa + RDF Attention Visualization</h1>
+		<p>Analyze text with RoBERTa attention weights and combine with RDF knowledge graphs</p>
+		
+		<div class="control-panel">
+			<div class="input-group">
+				<label for="text-input">Text to Analyze:</label>
+				<textarea id="text-input" placeholder="Enter text to analyze with RoBERTa attention...">Thailand has delicious food. Tom Yum Kung is a spicy soup that includes shrimp, chili, and lemon. The lemon gives it a sour taste while chili makes it spicy.</textarea>
+			</div>
+			
+			<div class="input-group">
+				<label for="attention-threshold">Attention Threshold:</label>
+				<input type="range" id="attention-threshold" min="0" max="1" step="0.01" value="0.1">
+				<span id="threshold-value">0.1</span>
+			</div>
+			
+			<div class="button-group">
+				<button class="btn" onclick="analyzeText()">Analyze with RoBERTa</button>
+				<button class="btn btn-secondary" onclick="loadRDFOnly()">Load RDF Only</button>
+				<button class="btn btn-secondary" onclick="combineRDFAttention()">Combine RDF + Attention</button>
+				<button class="btn btn-secondary" onclick="clearVisualization()">Clear</button>
+			</div>
+			
+			<div class="layer-controls">
+				<label for="layer-select">Attention Layer:</label>
+				<select id="layer-select" onchange="updateVisualization()" disabled>
+					<option value="">Select layer...</option>
+				</select>
+				<label for="visualization-mode">Mode:</label>
+				<select id="visualization-mode" onchange="updateVisualization()">
+					<option value="combined">Combined View</option>
+					<option value="rdf-only">RDF Only</option>
+					<option value="attention-only">Attention Only</option>
+				</select>
+			</div>
+			
+			<div class="loading" id="loading">Analyzing text with RoBERTa...</div>
+			<div id="error-message"></div>
+			
+			<div class="stats" id="stats" style="display: none;">
+				<div class="stat-card">
+					<div class="stat-value" id="stat-nodes">0</div>
+					<div class="stat-label">Nodes</div>
+				</div>
+				<div class="stat-card">
+					<div class="stat-value" id="stat-links">0</div>
+					<div class="stat-label">Links</div>
+				</div>
+				<div class="stat-card">
+					<div class="stat-value" id="stat-layers">0</div>
+					<div class="stat-label">Layers</div>
+				</div>
+				<div class="stat-card">
+					<div class="stat-value" id="stat-tokens">0</div>
+					<div class="stat-label">Tokens</div>
+				</div>
+			</div>
+		</div>
+		
+		<div class="visualization-container">
+			<div id="svg-body"></div>
+		</div>
+	</div>
+
+	<script>
+		// Global variables
+		let currentData = null;
+		let svg = null;
+		let force = null;
+		let graph = {nodes: [], links: []};
+		const API_BASE = 'http://localhost:5000';
+		
+		// Default RDF triples
+		const defaultRDFTriples = [
+			{subject:"ex:ThaiLand", predicate:"ex:hasFood", object:"ex:TomYumKung"},
+			{subject:"ex:TomYumKung", predicate:"rdf:type", object:"ex:SpicyFood"},
+			{subject:"ex:TomYumKung", predicate:"ex:includes", object:"ex:shrimp"},
+			{subject:"ex:TomYumKung", predicate:"ex:includes", object:"ex:chilly"},
+			{subject:"ex:TomYumKung", predicate:"ex:includes", object:"ex:lemon"},
+			{subject:"ex:lemon", predicate:"ex:hasTaste", object:"ex:sour"},
+			{subject:"ex:chilly", predicate:"ex:hasTaste", object:"ex:spicy"}
+		];
+
+		// Initialize visualization
+		function initVisualization() {
+			svg = d3.select("#svg-body").append("svg")
+				.attr("width", 1000)
+				.attr("height", 600);
+			
+			force = d3.layout.force()
+				.size([1000, 600])
+				.charge(-300)
+				.linkDistance(80);
+			
+			// Update threshold display
+			d3.select("#attention-threshold").on("input", function() {
+				d3.select("#threshold-value").text(this.value);
+			});
+		}
+
+		// Utility functions
+		function filterNodesById(nodes, id) {
+			return nodes.filter(function(n) { return n.id === id; });
+		}
+
+		function showLoading(show) {
+			d3.select("#loading").style("display", show ? "block" : "none");
+		}
+
+		function showError(message) {
+			const errorDiv = d3.select("#error-message");
+			if (message) {
+				errorDiv.html('<div class="error">' + message + '</div>');
+			} else {
+				errorDiv.html('');
+			}
+		}
+
+		function updateStats(data) {
+			if (data && data.combined_graph) {
+				d3.select("#stat-nodes").text(data.combined_graph.nodes.length);
+				d3.select("#stat-links").text(data.combined_graph.links.length);
+				d3.select("#stat-layers").text(data.attention_relationships ? 
+					Math.max(...data.attention_relationships.map(r => r.layer)) + 1 : 0);
+				d3.select("#stat-tokens").text(data.attention_relationships ? 
+					new Set(data.attention_relationships.flatMap(r => [r.source, r.target])).size : 0);
+				d3.select("#stats").style("display", "block");
+			}
+		}
+
+		// API functions
+		async function analyzeText() {
+			const text = document.getElementById('text-input').value;
+			if (!text.trim()) {
+				showError('Please enter some text to analyze');
+				return;
+			}
+
+			showLoading(true);
+			showError(null);
+
+			try {
+				const response = await fetch(`${API_BASE}/analyze`, {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({text: text})
+				});
+
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+
+				const result = await response.json();
+				
+				if (result.success) {
+					// Update layer selector
+					const layerSelect = document.getElementById('layer-select');
+					layerSelect.innerHTML = '<option value="">All layers</option>';
+					for (let i = 0; i < result.data.num_layers; i++) {
+						layerSelect.innerHTML += `<option value="${i}">Layer ${i}</option>`;
+					}
+					layerSelect.disabled = false;
+
+					// Store data and visualize
+					currentData = result.data;
+					await combineRDFAttention();
+				} else {
+					showError('Error: ' + result.error);
+				}
+			} catch (error) {
+				showError('Failed to analyze text: ' + error.message);
+				console.error('Error:', error);
+			} finally {
+				showLoading(false);
+			}
+		}
+
+		async function combineRDFAttention() {
+			const text = document.getElementById('text-input').value;
+			const threshold = parseFloat(document.getElementById('attention-threshold').value);
+
+			showLoading(true);
+			showError(null);
+
+			try {
+				const response = await fetch(`${API_BASE}/rdf_plus_attention`, {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({
+						text: text,
+						rdf_triples: defaultRDFTriples,
+						attention_threshold: threshold
+					})
+				});
+
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+
+				const result = await response.json();
+				
+				if (result.success) {
+					currentData = result.data;
+					updateStats(currentData);
+					updateVisualization();
+				} else {
+					showError('Error: ' + result.error);
+				}
+			} catch (error) {
+				showError('Failed to combine RDF and attention: ' + error.message);
+				console.error('Error:', error);
+			} finally {
+				showLoading(false);
+			}
+		}
+
+		function loadRDFOnly() {
+			currentData = {
+				rdf_triples: defaultRDFTriples,
+				attention_relationships: [],
+				combined_graph: {
+					nodes: [],
+					links: []
+				}
+			};
+
+			// Create RDF graph
+			const graph = {nodes: [], links: []};
+			
+			defaultRDFTriples.forEach(function(triple) {
+				const subjId = triple.subject;
+				const predId = triple.predicate;
+				const objId = triple.object;
+				
+				let subjNode = filterNodesById(graph.nodes, subjId)[0];
+				let objNode = filterNodesById(graph.nodes, objId)[0];
+				
+				if (!subjNode) {
+					subjNode = {id: subjId, label: subjId, type: 'rdf', weight: 1};
+					graph.nodes.push(subjNode);
+				}
+				
+				if (!objNode) {
+					objNode = {id: objId, label: objId, type: 'rdf', weight: 1};
+					graph.nodes.push(objNode);
+				}
+				
+				graph.links.push({
+					source: subjNode, 
+					target: objNode, 
+					predicate: predId, 
+					type: 'rdf',
+					weight: 1
+				});
+			});
+
+			currentData.combined_graph = graph;
+			updateStats(currentData);
+			updateVisualization();
+		}
+
+		function clearVisualization() {
+			svg.selectAll("*").remove();
+			currentData = null;
+			document.getElementById('layer-select').disabled = true;
+			d3.select("#stats").style("display", "none");
+			showError(null);
+		}
+
+		function updateVisualization() {
+			if (!currentData || !currentData.combined_graph) return;
+
+			const mode = document.getElementById('visualization-mode').value;
+			const selectedLayer = document.getElementById('layer-select').value;
+
+			// Clear previous visualization
+			svg.selectAll("*").remove();
+
+			// Filter data based on mode and layer
+			let filteredGraph = {nodes: [], links: []};
+			
+			if (mode === 'rdf-only') {
+				filteredGraph.nodes = currentData.combined_graph.nodes.filter(n => n.type === 'rdf');
+				filteredGraph.links = currentData.combined_graph.links.filter(l => l.type === 'rdf');
+			} else if (mode === 'attention-only') {
+				filteredGraph.nodes = currentData.combined_graph.nodes.filter(n => n.type === 'token');
+				filteredGraph.links = currentData.combined_graph.links.filter(l => {
+					if (l.type !== 'attention') return false;
+					if (selectedLayer && l.layer !== parseInt(selectedLayer)) return false;
+					return true;
+				});
+			} else {
+				// Combined view
+				filteredGraph.nodes = [...currentData.combined_graph.nodes];
+				filteredGraph.links = currentData.combined_graph.links.filter(l => {
+					if (l.type === 'attention' && selectedLayer && l.layer !== parseInt(selectedLayer)) {
+						return false;
+					}
+					return true;
+				});
+			}
+
+			graph = filteredGraph;
+			renderGraph();
+		}
+
+		function renderGraph() {
+			// Add arrow markers
+			svg.append("svg:defs").selectAll("marker")
+				.data(["rdf", "attention", "combined"])
+				.enter().append("svg:marker")
+				.attr("id", function(d) { return "marker-" + d; })
+				.attr("viewBox", "0 -5 10 10")
+				.attr("refX", 25)
+				.attr("refY", 0)
+				.attr("markerWidth", 6)
+				.attr("markerHeight", 6)
+				.attr("orient", "auto")
+				.append("svg:polyline")
+				.attr("points", "0,-5 10,0 0,5")
+				.attr("stroke", function(d) {
+					return d === 'rdf' ? '#3498db' : 
+						   d === 'attention' ? '#e74c3c' : '#9b59b6';
+				});
+
+			// Add links
+			const links = svg.selectAll(".link")
+				.data(graph.links)
+				.enter()
+				.append("line")
+				.attr("class", function(d) { return "link link-" + d.type; })
+				.attr("marker-end", function(d) { return "url(#marker-" + d.type + ")"; })
+				.style("stroke-width", function(d) { 
+					return d.type === 'attention' ? Math.max(1, d.weight * 5) : 2; 
+				});
+
+			// Add link labels
+			const linkTexts = svg.selectAll(".link-text")
+				.data(graph.links)
+				.enter()
+				.append("text")
+				.attr("class", "link-text")
+				.text(function(d) { 
+					return d.type === 'attention' ? 
+						`att:${d.weight.toFixed(2)}` : d.predicate; 
+				});
+
+			// Add nodes
+			const nodes = svg.selectAll(".node")
+				.data(graph.nodes)
+				.enter()
+				.append("circle")
+				.attr("class", function(d) { return "node node-" + d.type; })
+				.attr("r", function(d) { 
+					return d.type === 'attention' ? 6 : 10; 
+				})
+				.call(force.drag);
+
+			// Add node labels
+			const nodeTexts = svg.selectAll(".node-text")
+				.data(graph.nodes)
+				.enter()
+				.append("text")
+				.attr("class", "node-text")
+				.text(function(d) { 
+					return d.label.length > 15 ? d.label.substring(0, 15) + '...' : d.label; 
+				});
+
+			// Set up force layout
+			force.nodes(graph.nodes)
+				.links(graph.links)
+				.start();
+
+			// Update positions on tick
+			force.on("tick", function() {
+				links
+					.attr("x1", function(d) { return d.source.x; })
+					.attr("y1", function(d) { return d.source.y; })
+					.attr("x2", function(d) { return d.target.x; })
+					.attr("y2", function(d) { return d.target.y; });
+
+				nodes
+					.attr("cx", function(d) { return d.x; })
+					.attr("cy", function(d) { return d.y; });
+
+				nodeTexts
+					.attr("x", function(d) { return d.x + 12; })
+					.attr("y", function(d) { return d.y + 3; });
+
+				linkTexts
+					.attr("x", function(d) { return (d.source.x + d.target.x) / 2; })
+					.attr("y", function(d) { return (d.source.y + d.target.y) / 2; });
+			});
+		}
+
+		// Initialize on page load
+		window.onload = function() {
+			initVisualization();
+			loadRDFOnly(); // Load default RDF data
+		};
+	</script>
+
+	<footer style="margin-top:40px; padding:20px; height:50px; border-top:1px solid #eee; background:#fafafa; text-align:center">
+		<strong>RoBERTa + RDF Attention Visualization</strong> - Enhanced with transformer attention analysis
+		<br/>
+		Original concept by <a target="_blank" href="https://github.com/Rathachai">Rathachai Chawuthai</a>
+	</footer>
+</body>
+</html>

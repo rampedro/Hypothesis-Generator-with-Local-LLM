@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hypothesis Generator & Knowledge Explorer</title>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 0;
+            min-height: 70vh;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .visualization-panel {
+            padding: 30px;
+            background: white;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .input-group textarea,
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group textarea:focus,
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 5px 15px rgba(149, 165, 166, 0.4);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .success {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .hypothesis-list {
+            margin-top: 20px;
+        }
+
+        .hypothesis-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .hypothesis-statement {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .hypothesis-meta {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        .relationship-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .relationship-supports {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .relationship-contradicts {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .relationship-neutral {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .nli-result {
+            margin-top: 8px;
+            padding: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* SVG Styles */
+        svg {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+
+        .node-premise {
+            fill: #667eea;
+            stroke: #fff;
+            stroke-width: 3px;
+        }
+
+        .node-hypothesis {
+            fill: #764ba2;
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+
+        .link-supports {
+            stroke: #27ae60;
+            stroke-width: 3px;
+            stroke-opacity: 0.8;
+        }
+
+        .link-contradicts {
+            stroke: #e74c3c;
+            stroke-width: 3px;
+            stroke-opacity: 0.8;
+        }
+
+        .link-neutral {
+            stroke: #95a5a6;
+            stroke-width: 2px;
+            stroke-opacity: 0.6;
+        }
+
+        .node-text {
+            font: 12px sans-serif;
+            fill: #2c3e50;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        .link-text {
+            font: 10px sans-serif;
+            fill: #7f8c8d;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+        }
+    </style>
+    
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔬 Hypothesis Generator</h1>
+            <p>Generate and explore hypotheses using local Ollama LLM and RoBERTa MNLI</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="control-panel">
+                <div class="input-group">
+                    <label for="premise-input">Premise Statement:</label>
+                    <textarea id="premise-input" placeholder="Enter your premise or observation...">The dog was lost. Nobody lost any animal.</textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="context-input">Context (Optional):</label>
+                    <textarea id="context-input" placeholder="Additional context or background information..."></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label>
+                        <input type="checkbox" id="test-nli" checked> Test with RoBERTa MNLI
+                    </label>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <button class="btn" onclick="generateHypotheses()">🧠 Generate Hypotheses</button>
+                    <button class="btn btn-secondary" onclick="clearResults()">🗑️ Clear</button>
+                </div>
+                
+                <div class="loading" id="loading">Generating hypotheses...</div>
+                <div class="error" id="error-message"></div>
+                <div class="success" id="success-message"></div>
+                
+                <div class="stats" id="stats">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-hypotheses">0</span>
+                            <span class="stat-label">Hypotheses</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-supports">0</span>
+                            <span class="stat-label">Support</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-contradicts">0</span>
+                            <span class="stat-label">Contradict</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-neutral">0</span>
+                            <span class="stat-label">Neutral</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="hypothesis-list" id="hypothesis-list"></div>
+            </div>
+            
+            <div class="visualization-panel">
+                <div id="visualization-container">
+                    <p style="text-align: center; color: #7f8c8d; margin-top: 100px;">
+                        📊 Knowledge graph will appear here after generating hypotheses
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentData = null;
+        let svg = null;
+        let simulation = null;
+        const API_BASE = 'http://localhost:5002';
+
+        // Initialize visualization
+        function initVisualization() {
+            const container = d3.select("#visualization-container");
+            container.selectAll("*").remove();
+            
+            svg = container.append("svg")
+                .attr("width", "100%")
+                .attr("height", "500")
+                .style("display", "block");
+            
+            // Add arrow markers
+            svg.append("defs").selectAll("marker")
+                .data(["supports", "contradicts", "neutral"])
+                .enter().append("marker")
+                .attr("id", d => `arrow-${d}`)
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 25)
+                .attr("refY", 0)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", d => {
+                    switch(d) {
+                        case 'supports': return '#27ae60';
+                        case 'contradicts': return '#e74c3c';
+                        default: return '#95a5a6';
+                    }
+                });
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            if (message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            } else {
+                errorDiv.style.display = 'none';
+            }
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            if (message) {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                setTimeout(() => successDiv.style.display = 'none', 3000);
+            } else {
+                successDiv.style.display = 'none';
+            }
+        }
+
+        function updateStats(data) {
+            if (data && data.hypotheses) {
+                const hypotheses = data.hypotheses;
+                const supports = hypotheses.filter(h => h.relationship === 'supports' || h.nli_label === 'ENTAILMENT').length;
+                const contradicts = hypotheses.filter(h => h.relationship === 'contradicts' || h.nli_label === 'CONTRADICTION').length;
+                const neutral = hypotheses.filter(h => h.relationship === 'neutral' || h.nli_label === 'NEUTRAL').length;
+                
+                document.getElementById('stat-hypotheses').textContent = hypotheses.length;
+                document.getElementById('stat-supports').textContent = supports;
+                document.getElementById('stat-contradicts').textContent = contradicts;
+                document.getElementById('stat-neutral').textContent = neutral;
+                document.getElementById('stats').style.display = 'block';
+            }
+        }
+
+        function displayHypotheses(hypotheses) {
+            const container = document.getElementById('hypothesis-list');
+            container.innerHTML = '';
+            
+            hypotheses.forEach((hyp, index) => {
+                const item = document.createElement('div');
+                item.className = 'hypothesis-item';
+                
+                let relationshipClass = 'neutral';
+                let relationshipText = hyp.relationship || 'neutral';
+                
+                if (hyp.nli_label) {
+                    switch(hyp.nli_label) {
+                        case 'ENTAILMENT':
+                            relationshipClass = 'supports';
+                            relationshipText = 'supports';
+                            break;
+                        case 'CONTRADICTION':
+                            relationshipClass = 'contradicts';
+                            relationshipText = 'contradicts';
+                            break;
+                        default:
+                            relationshipClass = 'neutral';
+                            relationshipText = 'neutral';
+                    }
+                }
+                
+                item.innerHTML = `
+                    <div class="hypothesis-statement">${hyp.statement}</div>
+                    <div class="hypothesis-meta">
+                        <span class="relationship-badge relationship-${relationshipClass}">${relationshipText}</span>
+                        Confidence: ${hyp.confidence || 'medium'}
+                        ${hyp.evidence_needed ? `• Evidence: ${hyp.evidence_needed}` : ''}
+                    </div>
+                    ${hyp.nli_confidence ? `
+                        <div class="nli-result">
+                            RoBERTa MNLI: ${hyp.nli_label} (${(hyp.nli_confidence * 100).toFixed(1)}% confidence)
+                        </div>
+                    ` : ''}
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        function visualizeKnowledgeGraph(data) {
+            if (!data.knowledge_graph) return;
+            
+            const graph = data.knowledge_graph;
+            const width = svg.node().getBoundingClientRect().width;
+            const height = 500;
+            
+            // Clear previous visualization
+            svg.selectAll(".link, .node, .node-text, .link-text").remove();
+            
+            // Create simulation
+            simulation = d3.forceSimulation(graph.nodes)
+                .force("link", d3.forceLink(graph.links).id(d => d.id).distance(150))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(30));
+            
+            // Add links
+            const links = svg.selectAll(".link")
+                .data(graph.links)
+                .enter().append("line")
+                .attr("class", d => `link link-${d.predicate}`)
+                .attr("marker-end", d => `url(#arrow-${d.predicate})`);
+            
+            // Add nodes
+            const nodes = svg.selectAll(".node")
+                .data(graph.nodes)
+                .enter().append("circle")
+                .attr("class", d => `node node-${d.type}`)
+                .attr("r", d => d.type === 'premise' ? 20 : 15)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+            
+            // Add node labels
+            const nodeTexts = svg.selectAll(".node-text")
+                .data(graph.nodes)
+                .enter().append("text")
+                .attr("class", "node-text")
+                .text(d => d.label)
+                .attr("dy", ".35em");
+            
+            // Add tooltips
+            nodes.append("title")
+                .text(d => d.full_text);
+            
+            // Update positions on simulation tick
+            simulation.on("tick", () => {
+                links
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                
+                nodes
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+                
+                nodeTexts
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y + 35);
+            });
+        }
+
+        // Drag functions
+        function dragstarted(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
+
+        function dragended(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Main functions
+        async function generateHypotheses() {
+            const premise = document.getElementById('premise-input').value;
+            const context = document.getElementById('context-input').value;
+            const testNLI = document.getElementById('test-nli').checked;
+
+            if (!premise.trim()) {
+                showError('Please enter a premise statement');
+                return;
+            }
+
+            showLoading(true);
+            showError(null);
+            showSuccess(null);
+
+            try {
+                const response = await fetch(`${API_BASE}/explore_knowledge`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        premise: premise,
+                        context: context,
+                        test_nli: testNLI
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentData = result;
+                    updateStats(result);
+                    displayHypotheses(result.hypotheses);
+                    visualizeKnowledgeGraph(result);
+                    showSuccess(`Generated ${result.hypotheses.length} hypotheses successfully!`);
+                } else {
+                    showError('Error: ' + result.error);
+                }
+            } catch (error) {
+                showError('Failed to generate hypotheses: ' + error.message);
+                console.error('Error:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function clearResults() {
+            currentData = null;
+            document.getElementById('hypothesis-list').innerHTML = '';
+            document.getElementById('stats').style.display = 'none';
+            showError(null);
+            showSuccess(null);
+            
+            const container = d3.select("#visualization-container");
+            container.selectAll("*").remove();
+            container.append("p")
+                .style("text-align", "center")
+                .style("color", "#7f8c8d")
+                .style("margin-top", "100px")
+                .text("📊 Knowledge graph will appear here after generating hypotheses");
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            initVisualization();
+            
+            // Check server health
+            fetch(`${API_BASE}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Server status:', data);
+                })
+                .catch(error => {
+                    console.warn('Server not available:', error);
+                    showError('Server not available. Make sure the hypothesis server is running on port 5000.');
+                });
+        };
+
+        // Allow Enter key to trigger generation
+        document.getElementById('premise-input').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                generateHypotheses();
+            }
+        });
+    </script>
+</body>
+</html>
